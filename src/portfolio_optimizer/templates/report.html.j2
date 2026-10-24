@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta di allocazione – {{ client }}</title>
+<style>
+  :root { --blu: #1f4e79; --grigio: #595959; --chiaro: #f2f5f9; }
+  body { font-family: "Segoe UI", Helvetica, Arial, sans-serif; color: #222; max-width: 960px;
+         margin: 0 auto; padding: 32px 20px 60px; line-height: 1.5; background: #fff; }
+  header { border-bottom: 3px solid var(--blu); padding-bottom: 12px; margin-bottom: 24px; }
+  h1 { color: var(--blu); margin: 0 0 4px; font-size: 1.7rem; }
+  h2 { color: var(--blu); font-size: 1.2rem; margin-top: 36px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  .sub { color: var(--grigio); font-size: .95rem; }
+  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 16px 0; }
+  .kpi div { background: var(--chiaro); border-radius: 8px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 1.45rem; color: var(--blu); }
+  .kpi span { font-size: .8rem; color: var(--grigio); text-transform: uppercase; letter-spacing: .03em; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; margin: 10px 0; }
+  th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid #e5e5e5; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: var(--blu); color: #fff; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  img { max-width: 100%; display: block; margin: 14px auto; }
+  .note { font-size: .8rem; color: var(--grigio); background: var(--chiaro); padding: 12px 14px; border-radius: 6px; }
+  ul { padding-left: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Proposta di allocazione del portafoglio</h1>
+  <div class="sub">Preparata per <b>{{ client }}</b> · {{ today }} · Capitale considerato {{ amount }}</div>
+</header>
+
+<h2>Sintesi</h2>
+<p>Sulla base dei dati storici del periodo {{ period }} su {{ n_assets }} asset class, il portafoglio che offre
+il miglior rapporto tra rendimento atteso e rischio (massimo Sharpe), con un limite del {{ max_weight }}
+per singolo asset, presenta queste caratteristiche attese:</p>
+<div class="kpi">
+  <div><span>Rendimento atteso annuo</span><b>{{ rec_ret }}</b></div>
+  <div><span>Volatilità attesa annua</span><b>{{ rec_vol }}</b></div>
+  <div><span>Sharpe atteso</span><b>{{ rec_sharpe }}</b></div>
+  <div><span>Tasso privo di rischio</span><b>{{ risk_free }}</b></div>
+</div>
+
+<h2>Allocazione proposta</h2>
+<table>
+  <tr><th>Asset class</th><th>Peso</th><th>Importo</th><th>Quota del rischio</th></tr>
+  {% for row in allocation %}
+  <tr><td>{{ row.asset }}</td><td>{{ row.weight }}</td><td>{{ row.amount }}</td><td>{{ row.risk }}</td></tr>
+  {% endfor %}
+</table>
+<p class="sub">La “quota del rischio” indica quanta parte della volatilità complessiva deriva da ciascun asset:
+un peso piccolo può pesare molto sul rischio se l'asset è volatile.</p>
+
+<h2>Confronto tra strategie</h2>
+<table>
+  <tr><th>Strategia</th><th>Rendimento atteso</th><th>Volatilità attesa</th><th>Sharpe atteso</th></tr>
+  {% for row in expected %}
+  <tr><td>{{ row.name }}</td><td>{{ row.ret }}</td><td>{{ row.vol }}</td><td>{{ row.sharpe }}</td></tr>
+  {% endfor %}
+</table>
+<img src="data:image/png;base64,{{ charts.frontier }}" alt="Frontiera efficiente">
+<img src="data:image/png;base64,{{ charts.weights }}" alt="Allocazione per strategia">
+
+{% if backtest_rows %}
+<h2>Verifica storica (backtest walk-forward)</h2>
+<p>Per evitare di “ottimizzare col senno di poi”, ogni trimestre i pesi sono stati ricalcolati usando
+solo i tre anni precedenti, includendo i costi di transazione. Periodo: {{ backtest_period }}.</p>
+<table>
+  <tr><th>Strategia</th><th>CAGR</th><th>Volatilità</th><th>Sharpe</th><th>Max drawdown</th><th>CVaR 95% giorn.</th><th>Turnover medio</th></tr>
+  {% for row in backtest_rows %}
+  <tr><td>{{ row.name }}</td><td>{{ row.cagr }}</td><td>{{ row.vol }}</td><td>{{ row.sharpe }}</td><td>{{ row.mdd }}</td><td>{{ row.cvar }}</td><td>{{ row.turnover }}</td></tr>
+  {% endfor %}
+</table>
+<img src="data:image/png;base64,{{ charts.backtest }}" alt="Backtest">
+{% endif %}
+
+<h2>Diversificazione</h2>
+<img src="data:image/png;base64,{{ charts.correlation }}" alt="Correlazioni">
+
+<h2>Metodologia</h2>
+<ul>
+  <li>Rendimenti attesi: media storica annualizzata dei rendimenti giornalieri.</li>
+  <li>Rischio: matrice di covarianza stimata con shrinkage di Ledoit-Wolf (intensità {{ shrinkage }}),
+      più stabile della stima campionaria.</li>
+  <li>Ottimizzazione media-varianza (Markowitz) con solo posizioni lunghe e limite per asset;
+      risk parity a contributo di rischio uguale.</li>
+  <li>Metriche di rischio: volatilità, drawdown massimo, VaR e CVaR storici al 95%.</li>
+</ul>
+
+<p class="note">{% if data_note %}{{ data_note }} {% endif %}Documento a scopo illustrativo: non costituisce
+consulenza finanziaria né sollecitazione all'investimento. I rendimenti passati non sono indicativi di
+quelli futuri; le stime si basano su dati storici e possono differire in modo significativo dai risultati reali.</p>
+</body>
+</html>

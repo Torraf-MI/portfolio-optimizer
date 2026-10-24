@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portfolio-optimizer"
+version = "0.1.0"
+description = "Analisi e ottimizzazione di portafoglio (Markowitz, risk parity, backtest walk-forward) con report per il cliente"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Francesco Torraco" }]
+keywords = ["portfolio", "markowitz", "risk parity", "wealth management", "finance"]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+yahoo = ["yfinance>=0.2"]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[project.scripts]
+portfolio-optimizer = "portfolio_optimizer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+portfolio_optimizer = ["templates/*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B905"]
